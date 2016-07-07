@@ -4,6 +4,7 @@
   "description": "CSS Modules tryout with Handlebars enabled server.",
   "main": "index.js",
   "scripts": {
+    "start": "node server",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -14,5 +15,11 @@
     "express"
   ],
   "author": "Lucas Constantino Silva",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "css-modules-require-hook": "^4.0.1",
+    "express": "^4.14.0",
+    "handlebars": "^4.0.5",
+    "promised-handlebars": "^1.0.3"
+  }
 }
