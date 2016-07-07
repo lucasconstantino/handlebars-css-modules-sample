@@ -1,0 +1,18 @@
+{
+  "name": "css-modules-handlebars",
+  "version": "0.1.0",
+  "description": "CSS Modules tryout with Handlebars enabled server.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "css-modules",
+    "css",
+    "modules",
+    "handlebars",
+    "express"
+  ],
+  "author": "Lucas Constantino Silva",
+  "license": "MIT"
+}
