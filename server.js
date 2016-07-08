@@ -1,51 +1,48 @@
 const fs = require('fs')
 const path = require('path')
 const express = require('express')
-const Handlebars = require('handlebars')
-const handlebars = require('promised-handlebars')(Handlebars)
+const handlebars = require('handlebars')
 const CssModules = require('css-modules-loader-core')
 
 const cssParser = new CssModules()
 
-console.log(Promise.promisify)
 
-
-// Helper to load filepath as promise.
-// ----------------------------------------------
-
+/**
+ * Helper to load file content in a promise.
+ */
 const readFile = (filepath) => new Promise((resolve, reject) => {
   fs.readFile(path.join(__dirname, filepath), 'utf-8', (err, fileContent) => {
     err ? reject(err) : resolve(fileContent)
   })
 })
 
+let csss
 
-// Handlebars setup
-// ----------------------------------------------
+/**
+ * Read CSS file, parse it's content, and start the application.
+ */
+readFile('styles.css')
+  .then(css => csss = css && css)
+  .then(css => cssParser.load(css, 'styles'))
+  .then(cssModule => {
+    const css = cssModule.injectableSource
+    const classes = cssModule.exportTokens
 
-handlebars.registerHelper('className', (filename, className) => readFile(filename)
-  .then(css => cssParser.load(css, filename))
-  .then(parsed => parsed.exportTokens[className])
-)
+    // Handlebars setup
+    // ----------------------------------------------
+
+    handlebars.registerHelper('class', className => cssModule.exportTokens[className])
 
 
-// HTTP Server
-// ----------------------------------------------
+    // HTTP Server
+    // ----------------------------------------------
 
-const server = express()
+    const server = express()
+    const index = readFile('index.html').then(html => handlebars.compile(html)())
 
-server.get(/.\.css$/, (req, res) => {
-  readFile(req.url)
-    .then(css => cssParser.load(css, req.url))
-    .then(parsed => res.send(parsed.injectableSource))
-    .catch(err => res.status(500).send(err))
-})
+    server.get('/styles.css', (req, res) => res.set('Content-Type', 'text/css; charset=UTF-8').send(css))
+    server.get(['/', '/index.html'], (req, res) => index.then(html => res.set('Content-Type', 'text/html; charset=UTF-8').send(html)))
 
-server.get(['/', /.\.html$/], (req, res) => {
-  readFile(req.url + (req.url.slice(-1) == '/' ? 'index.html' : ''))
-    .then(html => handlebars.compile(html)())
-    .then(compiled => res.send(compiled))
-    .catch(err => res.status(500).send(err))
-})
+    server.listen(3001)
 
-server.listen(3001)
+  }).catch(console.error)
