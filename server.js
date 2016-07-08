@@ -16,13 +16,11 @@ const readFile = (filepath) => new Promise((resolve, reject) => {
   })
 })
 
-let csss
 
 /**
  * Read CSS file, parse it's content, and start the application.
  */
 readFile('styles.css')
-  .then(css => csss = css && css)
   .then(css => cssParser.load(css, 'styles'))
   .then(cssModule => {
     const css = cssModule.injectableSource
@@ -43,6 +41,6 @@ readFile('styles.css')
     server.get('/styles.css', (req, res) => res.set('Content-Type', 'text/css; charset=UTF-8').send(css))
     server.get(['/', '/index.html'], (req, res) => index.then(html => res.set('Content-Type', 'text/html; charset=UTF-8').send(html)))
 
-    server.listen(3001)
+    server.listen(3001, () => console.log('Listening on http://localhost:3001'))
 
   }).catch(console.error)
