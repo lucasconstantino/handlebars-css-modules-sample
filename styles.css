@@ -10,5 +10,9 @@ body {
 
 .call-to-action {
   composes: button;
-  color: red;
+  composes: red from 'other.css'
+}
+
+.priority-link {
+  composes: red from 'other.css';
 }

@@ -3,12 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <title>Handlebar's with CSS-Modules</title>
-    <link rel="stylesheet" href="/styles.css">
+
+    {{stylesheet 'styles.css' 'main'}}
   </head>
 
   <body>
-    <a href="#" class="{{class 'button' }}">Botão</a>
-    <a href="#" class="{{class 'call-to-action' }}">Botão</a>
+    <a href="#" class="{{main 'button'}}">Botão</a>
+    <a href="#" class="{{main 'call-to-action'}}">Botão</a>
+    <a href="#" class="{{main 'priority-link'}}">Botão</a>
   </body>
 
 </html>

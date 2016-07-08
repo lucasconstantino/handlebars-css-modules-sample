@@ -1,46 +1,78 @@
 const fs = require('fs')
 const path = require('path')
 const express = require('express')
-const handlebars = require('handlebars')
+const Handlebars = require('handlebars')
+const handlebars = require('promised-handlebars')(Handlebars)
 const CssModules = require('css-modules-loader-core')
 
 const cssParser = new CssModules()
 
 
-/**
- * Helper to load file content in a promise.
- */
+// Helpers
+// ----------------------------------------------
+
+// Helper to load file content in a promise.
 const readFile = (filepath) => new Promise((resolve, reject) => {
-  fs.readFile(path.join(__dirname, filepath), 'utf-8', (err, fileContent) => {
-    err ? reject(err) : resolve(fileContent)
+  fs.readFile(filepath, 'utf-8', (err, content) => {
+    err ? reject(err) : resolve({ content, filepath })
   })
 })
 
+// Helper method to read HTML file content and compile it, adding class names
+// and injecting CSS when needed.
+const parseHTMLFile = (filepath) => readFile(filepath)
+  .then(({ content, filepath }) => handlebars.compile(content)({ filepath }))
 
-/**
- * Read CSS file, parse it's content, and start the application.
- */
-readFile('styles.css')
-  .then(css => cssParser.load(css, 'styles'))
-  .then(cssModule => {
-    const css = cssModule.injectableSource
-    const classes = cssModule.exportTokens
+// Helper method to read CSS file content and parse as css-module.
+const parseCSSFile = (filepath) => readFile(filepath)
+  .then(({ content, filepath }) => {
+    const imported = []
+    const fetch = fetcher(imported)
 
-    // Handlebars setup
-    // ----------------------------------------------
+    return cssParser.load(content, path.relative(__dirname, filepath), filepath, fetch)
+      .then(({ exportTokens, injectableSource }) => ({
+        exportTokens,
+        injectableSource: imported.join(' ') + injectableSource
+      }))
+  })
 
-    handlebars.registerHelper('class', className => cssModule.exportTokens[className])
+// Fetched method to load import composables on CSS files.
+const fetcher = (imported = []) => (search, relativeTo, _trace) => parseCSSFile(path.resolve(path.dirname(_trace), search.replace(/"/g, '')))
+  .then(({ exportTokens, injectableSource }) => {
+    imported.push(injectableSource)
+    return exportTokens
+  })
 
 
-    // HTTP Server
-    // ----------------------------------------------
+// Handlebars setup
+// ----------------------------------------------
 
-    const server = express()
-    const index = readFile('index.html').then(html => handlebars.compile(html)())
+// This helper will load a stylesheet file, parse as a css-module,
+// inject the resulting content on the HTML and add things to the context.
+handlebars.registerHelper('stylesheet', function (file, name, con) {
+  const context = this
+  const root = path.dirname(context.filepath)
+  const filepath = path.resolve(root, file)
+  const parsed = parseCSSFile(filepath)
 
-    server.get('/styles.css', (req, res) => res.set('Content-Type', 'text/css; charset=UTF-8').send(css))
-    server.get(['/', '/index.html'], (req, res) => index.then(html => res.set('Content-Type', 'text/html; charset=UTF-8').send(html)))
+  // Register dynamic helper for each imported stylesheet.
+  handlebars.registerHelper(name, className => parsed.then(({ exportTokens }) => exportTokens[className]))
 
-    server.listen(3001, () => console.log('Listening on http://localhost:3001'))
+  return parsed.then(({ injectableSource }) => new handlebars.SafeString('<style>' + injectableSource + '</style>'));
+})
 
-  }).catch(console.error)
+
+
+// HTTP Server
+// ----------------------------------------------
+
+const server = express()
+
+server.get(['/', /\.*\.html/], (req, res) => {
+  const filepath = req.url + (req.url.slice(-1) === '/' ? 'index.html' : '')
+  return parseHTMLFile(path.join(__dirname, filepath))
+    .then(html => res.send(html))
+    .catch(e => res.status(500).send(e.toString()))
+})
+
+server.listen(3001, () => console.log('Listening on http://localhost:3001'))
